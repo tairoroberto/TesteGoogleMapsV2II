@@ -1,19 +1,29 @@
 package br.com.tairoroberto.testegooglemapsv2ii;
 
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v7.app.ActionBarActivity;
+import android.net.http.AndroidHttpClient;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.text.Html;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
-import android.webkit.GeolocationPermissions;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -21,8 +31,11 @@ import android.widget.Toast;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMap.CancelableCallback;
+import com.google.android.gms.maps.GoogleMap.InfoWindowAdapter;
 import com.google.android.gms.maps.GoogleMapOptions;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -30,18 +43,13 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
-
 public class MainActivity extends FragmentActivity {
-    private SupportMapFragment mapFragment;
-    private GoogleMap googleMap;
+    private SupportMapFragment mapFrag;
+    private GoogleMap map;
     private Marker marker;
     private Polyline polyline;
     private List<LatLng> list;
+    private long distance;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,108 +58,127 @@ public class MainActivity extends FragmentActivity {
 
         //MAPS VIA XML
         //Declara o fragment do maps
-        mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.fragment);
-        googleMap = mapFragment.getMap();
-        //ativa o mapa do xml
-        configmap();
+        mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.fragment);
 
+        map = mapFrag.getMap();
+        //ativa o mapa do xml
+        configMap();
     }
 
 
-    public void configmap(){
+    public void configMap(){
         //Se mapFragment não for null, será carregado os googleMap
-        googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        map = mapFrag.getMap();
+        map.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         //Inicializa a lista para desenhar uma rota
         list = new ArrayList<LatLng>();
+
         //Latitude e logitude
-        final LatLng latLng = new LatLng(-23.548998, -46.633058);
+        LatLng latLng = new LatLng(-23.5154135,-46.5867317);
 
         //Configura a posição da camera, local, zoom etc.
         CameraPosition cameraPosition = new CameraPosition.Builder().target(latLng).zoom(15).bearing(0).tilt(45).build();
-        CameraUpdate cameraUpdate = CameraUpdateFactory.newCameraPosition(cameraPosition);
+        CameraUpdate update = CameraUpdateFactory.newCameraPosition(cameraPosition);
 
         //atualiza a posicao da camera no mapa
         //googleMap.moveCamera(cameraUpdate);
 
-        //animação do mapa
-        googleMap.animateCamera(cameraUpdate, 3000, new GoogleMap.CancelableCallback() {
+        //map.moveCamera(update);  //animação do mapa
+        map.animateCamera(update, 3000, new CancelableCallback(){
             @Override
-            public void onFinish() {
-                Log.i("Script", "Animação: CancelableCallback.onFinish()");
+            public void onCancel() {
+                Log.i("Script", "CancelableCallback.onCancel()");
             }
 
             @Override
-            public void onCancel() {
-                Log.i("Script","Animação: CancelableCallback.onCancel()");
+            public void onFinish() {
+                Log.i("Script", "CancelableCallback.onFinish()");
             }
         });
 
-        googleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+        // MARKERS
+        //customAddMarker(new LatLng(-23.564224, -46.653156), "Marcador 1", "O Marcador 1 foi reposicionado");
+        //customAddMarker(new LatLng(-23.564205, -46.653102), "Marcador 2", "O Marcador 2 foi reposicionado");
+
+        map.setInfoWindowAdapter(new InfoWindowAdapter(){
+
+            @Override
+            public View getInfoContents(Marker marker) {
+                TextView tv = new TextView(MainActivity.this);
+                tv.setText(Html.fromHtml("<b><font color=\"#ff0000\">"+marker.getTitle()+":</font></b> "+marker.getSnippet()));
+
+                return tv;
+            }
+
             @Override
             public View getInfoWindow(Marker marker) {
-                LinearLayout layout = new LinearLayout(getBaseContext());
-                layout.setPadding(20,20,20,20);
-                layout.setBackgroundColor(Color.GREEN);
-                layout.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout ll = new LinearLayout(MainActivity.this);
+                ll.setPadding(20, 20, 20, 20);
+                ll.setBackgroundColor(Color.GREEN);
 
-                TextView textView = new TextView(getBaseContext());
-                textView.setText(Html.fromHtml("<b><font color=\"#ff0000\">" + marker.getTitle() + ":</font></b>" + marker.getSnippet()));
-
-                Button btnTeste = new Button(getBaseContext());
-                btnTeste.setText("Botão de teste");
-                btnTeste.setBackgroundColor(Color.BLUE);
+                TextView tv = new TextView(MainActivity.this);
+                tv.setText(Html.fromHtml("<b><font color=\"#ffffff\">"+marker.getTitle()+":</font></b> "+marker.getSnippet()));
+                ll.addView(tv);
 
                 //teste com listener de botão dentro do infoWindow
                 //o Clique no infoWindow não funciona
                 //ele pega o clique do infowindow e não do botão
                 //ele trava os filhos do infowindow como se fosse uma imagem
-                btnTeste.setOnClickListener(new View.OnClickListener() {
+                Button bt = new Button(MainActivity.this);
+                bt.setText("Botão");
+                bt.setBackgroundColor(Color.RED);
+                bt.setOnClickListener(new Button.OnClickListener(){
+
                     @Override
                     public void onClick(View v) {
-                        Log.i("Script","Clique do botão dentro do infoWindow");
+                        Log.i("Script", "Botão clicado");
                     }
+
                 });
 
-                layout.addView(textView);
-                layout.addView(btnTeste);
+                ll.addView(bt);
 
-                return layout;
-
-            }
-
-            @Override
-            public View getInfoContents(Marker marker) {
-                TextView textView = new TextView(getBaseContext());
-                textView.setText(Html.fromHtml("<b><font color=\"#ff0000\">"+marker.getTitle()+":</font></b>"+marker.getSnippet()));
-                return textView;
+                return ll;
             }
         });
 
 
+        // EVENTS
+        map.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition cameraPosition) {
+					/*Log.i("Script", "setOnCameraChangeListener()");
+
+					if(marker != null){
+						marker.remove();
+					}
+					customAddMarker(new LatLng(cameraPosition.target.latitude, cameraPosition.target.longitude), "1: Marcador Alterado", "O Marcador foi reposicionado");
+					*/
+            }
+        });
 
         //Evento de clique no mapa
-        googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                Log.i("Script","setOnMapClickListener()");
-                if (marker != null){
+                Log.i("Script", "setOnMapClickListener()");
+
+                if(marker != null){
                     marker.remove();
                 }
-                custonMarker(new LatLng(latLng.latitude,latLng.longitude),"2: Marcador alterado","O marcador foi reposicionado");
+                customAddMarker(new LatLng(latLng.latitude, latLng.longitude), "2: Marcador Alterado", "O Marcador foi reposicionado");
                 //adiciona latitude e longitude a lista de rotas
                 list.add(latLng);
                 //Desenha a rota
                 drawRoute();
-
             }
         });
 
         //Evento de clique no marcador do mapa
-        googleMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+        map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
             public boolean onMarkerClick(Marker marker) {
-                Log.i("Script","3: Marker: "+ marker.getTitle());
-
+                Log.i("Script", "3: Marker: "+marker.getTitle());
                 //quando retorna false = o android qeu administra as mudanção no marcador
                 //quando retorna false = o android assume que vc ira trator todas as mudanção do markador
                 return false;
@@ -159,124 +186,241 @@ public class MainActivity extends FragmentActivity {
         });
 
         //Evento de clique no  infoWindow "Janekla de informação"
-        googleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+        map.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
             @Override
             public void onInfoWindowClick(Marker marker) {
-                Log.i("Script","4: setOnInfoWindowClickListener()");
+                Log.i("Script", "4: Marker: "+marker.getTitle());
             }
         });
-
     }
 
     //funcão que adiciona o marcador no mapa
-    public void custonMarker( LatLng latLng, String title, String snippet){
+    public void customAddMarker(LatLng latLng, String title, String snippet){
         MarkerOptions options = new MarkerOptions();
         options.position(latLng).title(title).snippet(snippet).draggable(true);
 
         //Muda o Pin do mapa "a imagem do marcador"
         // options.icon(BitmapDescriptorFactory.fromResource(R.drawable.pin_mapa));
-
-        //Adiciona as opçções ao marker
-        marker = googleMap.addMarker(options);
+        marker = map.addMarker(options);
     }
-
 
     //Metodo para desenhar a rota
     public void drawRoute(){
-        PolylineOptions options;
+        PolylineOptions po;
+
         if(polyline == null){
-            options = new PolylineOptions();
+            po = new PolylineOptions();
 
             //Adiciona as linhas no PolylineOptions
-            for (int i = 0; i < list.size(); i++) {
-                options.add(list.get(i));
+            for(int i = 0, tam = list.size(); i < tam; i++){
+                po.add(list.get(i));
             }
-
             //Adiciona uma cor
-            options.color(Color.BLACK);
+            po.color(Color.BLACK).width(4);
             //Adiciona o Polyline no maps
-            polyline = googleMap.addPolyline(options);
-        }else {
+            polyline = map.addPolyline(po);
+        }
+        else{
             polyline.setPoints(list);
         }
     }
 
 
-    //Metodo para pegar a distancia
     public void getDistance(View view){
-        double distance = 0;
-        for (int i = 0; i < list.size(); i++) {
-            if (i < list.size() - 1){
-                distance += distance(list.get(i),list.get(i+1));
-            }
-        }
-        //Mostra a distancia em um toast
-        Toast.makeText(this,"Distancia: "+ distance + " metros",Toast.LENGTH_LONG).show();
+		/*double distance = 0;
+
+		for(int i = 0, tam = list.size(); i < tam; i++){
+			if(i < tam - 1){
+				distance += distance(list.get(i), list.get(i+1));
+			}
+		}*/
+
+        Toast.makeText(MainActivity.this, "Distancia: "+distance+" metros", Toast.LENGTH_LONG).show();
     }
 
-    //Metodo para pegar a localização
-    public void getLocation(View view) {
-        Geocoder geocoder = new Geocoder(MainActivity.this);
 
+
+    //Metodo para pegar a localização
+    public void getLocation(View view){
+        Geocoder gc = new Geocoder(MainActivity.this);
+
+        List<Address> addressList;
         try {
 
-            List<Address> addressList = geocoder.getFromLocation(list.get(list.size() - 1).latitude, list.get(list.size() - 1).longitude,1);
+            //Pega a localização pelo nome
+            //addressList = gc.getFromLocationName("Rua Vergueiro, São Paulo, São Paulo, Brasil", 1);
 
-             //Pega a localização pelo nome
-            //List<Address> addressList = geocoder.getFromLocationName("Rua Vergueiro,São Paulo,Brasil", 1);
+            //Pega por localização
+            addressList = gc.getFromLocation(list.get(list.size() - 1).latitude, list.get(list.size() - 1).longitude, 1);
 
-            String address = "Rua: " + addressList.get(0).getThoroughfare()+"\n";
-            address += "Cidade: " + addressList.get(0).getSubAdminArea()+"\n";
-            address += "Estado: " + addressList.get(0).getAdminArea()+"\n";
-            address += "Cidade: " + addressList.get(0).getCountryName();
+            String address = "Rua: "+addressList.get(0).getThoroughfare()+"\n";
+            address += "Cidade: "+addressList.get(0).getSubAdminArea()+"\n";
+            address += "Estado: "+addressList.get(0).getAdminArea()+"\n";
+            address += "País: "+addressList.get(0).getCountryName();
 
-           //Mostra a distancia em um toast
-            Toast.makeText(this,"Local: "+ address,Toast.LENGTH_LONG).show();
+            LatLng ll = new LatLng(addressList.get(0).getLatitude(), addressList.get(0).getLongitude());
 
-           // LatLng latLng = new LatLng(addressList.get(0).getLatitude(),addressList.get(0).getLongitude());
-          //  Toast.makeText(this,"LatLng: "+ latLng,Toast.LENGTH_LONG).show();
+            Toast.makeText(MainActivity.this, "Local: "+address, Toast.LENGTH_LONG).show();
+            // Toast.makeText(MainActivity.this, "LatLng: "+ll, Toast.LENGTH_LONG).show();
 
         } catch (IOException e) {
+            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
 
 
-
     //Metodo para calcular a distancia de um ponto inicial ao final
     //metodo do stackoverflow melhor que os metodo sda classe de maps para calcular a distancia em metros
-    public static double distance(LatLng StartP, LatLng EndP){
+    public static double distance(LatLng StartP, LatLng EndP) {
         double lat1 = StartP.latitude;
         double lat2 = EndP.latitude;
-        double log1 = StartP.longitude;
-        double log2 = EndP.longitude;
+        double lon1 = StartP.longitude;
+        double lon2 = EndP.longitude;
         double dLat = Math.toRadians(lat2-lat1);
-        double dLon = Math.toRadians(log2-log1);
-        double  a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        double  c = 2 * Math.asin(Math.sqrt(a));
-
+        double dLon = Math.toRadians(lon2-lon1);
+        double a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+        double c = 2 * Math.asin(Math.sqrt(a));
         return 6366000 * c;
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
+
+
+
+
+
+    /**********************************************************************************************/
+    /*           WEB CONNECTION pega um arquivo Json do site da api do google maps                 */
+    /**********************************************************************************************/
+
+    public void getRouteByGMAV2(View view) throws UnsupportedEncodingException{
+        EditText etO = (EditText) findViewById(R.id.edtOrigem);
+        EditText etD = (EditText) findViewById(R.id.edtDestino);
+
+        //Decodifica a origem e o destino que o uuario digitou e converte para o formato
+        //que o google maps possa entender
+        String origin = URLEncoder.encode(etO.getText().toString(), "UTF-8");
+        String destination = URLEncoder.encode(etD.getText().toString(), "UTF-8");
+
+        //Chama o metodo para pegar a rota
+        getRoute(/*new LatLng(-20.195403, -40.234478)*/ origin, /*new LatLng(-20.304596, -40.291813)*/ destination);
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+
+
+
+    // WEB CONNECTION
+    //public void getRoute(final String origin, final String destination){
+    public void getRoute(final String origin, final String destination){
+        new Thread(){
+            public void run(){
+						/*String url= "http://maps.googleapis.com/maps/api/directions/json?origin="
+								+ origin+"&destination="
+								+ destination+"&sensor=false";*/
+                String url= "http://maps.googleapis.com/maps/api/directions/json?origin="
+                        + origin/*.latitude+","+origin.longitude*/+"&destination="
+                        + destination/*.latitude+","+destination.longitude*/+"&sensor=false";
+
+
+                HttpResponse response;
+                HttpGet request;
+                AndroidHttpClient client = AndroidHttpClient.newInstance("route");
+
+                request = new HttpGet(url);
+                try {
+                    response = client.execute(request);
+                    final String answer = EntityUtils.toString(response.getEntity());
+
+                    runOnUiThread(new Runnable(){
+                        public void run(){
+                            try {
+                                //Log.i("Script", answer);
+                                list = buildJSONRoute(answer);
+                                drawRoute();
+                            }
+                            catch(JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+
+                }
+                catch(IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+    }
+
+
+
+
+    // PARSER JSON
+    public List<LatLng> buildJSONRoute(String json) throws JSONException{
+        JSONObject result = new JSONObject(json);
+        JSONArray routes = result.getJSONArray("routes");
+
+        distance = routes.getJSONObject(0).getJSONArray("legs").getJSONObject(0).getJSONObject("distance").getInt("value");
+
+        JSONArray steps = routes.getJSONObject(0).getJSONArray("legs").getJSONObject(0).getJSONArray("steps");
+        List<LatLng> lines = new ArrayList<LatLng>();
+
+        for(int i=0; i < steps.length(); i++) {
+            //Mostra o local de inicio
+            Log.i("Script", "STEP: LAT: "+steps.getJSONObject(i).getJSONObject("start_location").getDouble("lat")+" | LNG: "+steps.getJSONObject(i).getJSONObject("start_location").getDouble("lng"));
+
+
+            String polyline = steps.getJSONObject(i).getJSONObject("polyline").getString("points");
+
+            for(LatLng p : decodePolyline(polyline)) {
+                lines.add(p);
+            }
+
+            //Mostra o local de fim
+            Log.i("Script", "STEP: LAT: "+steps.getJSONObject(i).getJSONObject("end_location").getDouble("lat")+" | LNG: "+steps.getJSONObject(i).getJSONObject("end_location").getDouble("lng"));
         }
 
-        return super.onOptionsItemSelected(item);
+        return(lines);
+    }
+
+
+
+
+    // DECODE POLYLINE
+    private List<LatLng> decodePolyline(String encoded) {
+
+        List<LatLng> listPoints = new ArrayList<LatLng>();
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
+
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            LatLng p = new LatLng((((double) lat / 1E5)), (((double) lng / 1E5)));
+            Log.i("Script", "POL: LAT: "+p.latitude+" | LNG: "+p.longitude);
+            listPoints.add(p);
+        }
+        return listPoints;
     }
 }
+
+
+

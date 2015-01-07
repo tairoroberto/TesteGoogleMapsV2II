@@ -19,10 +19,31 @@
     <fragment
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1.02"
+        android:layout_weight="0.95"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:id="@+id/fragment"
-        android:layout_gravity="center_horizontal" />
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="20dp" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:ems="10"
+        android:id="@+id/edtOrigem"
+        android:hint="Origem"
+        android:textColor="#ffffff"
+        android:textColorHint="#ffffff" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textPersonName"
+        android:ems="10"
+        android:id="@+id/edtDestino"
+        android:hint="Destino"
+        android:textColor="#ffffff"
+        android:textColorHint="#ffffff" />
 
     <RelativeLayout
         android:orientation="horizontal"
@@ -51,6 +72,15 @@
             android:layout_alignParentRight="true"
             android:layout_alignParentEnd="true"
             android:onClick="getLocation" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pegar rota"
+            android:id="@+id/btngetRoute"
+            android:layout_alignParentTop="true"
+            android:layout_centerHorizontal="true"
+            android:onClick="getRouteByGMAV2"/>
     </RelativeLayout>
 
 

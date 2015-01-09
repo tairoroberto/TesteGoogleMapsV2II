@@ -19,7 +19,7 @@
     <fragment
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.95"
+        android:layout_weight="0.99"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:id="@+id/fragment"
         android:layout_gravity="center_horizontal"
@@ -82,6 +82,15 @@
             android:layout_centerHorizontal="true"
             android:onClick="getRouteByGMAV2"/>
     </RelativeLayout>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Triangulação Gps"
+        android:id="@+id/btnIrGps"
+        android:layout_gravity="center_horizontal"
+        android:layout_weight="0.03"
+        android:onClick="irGpsActivity" />
 
 
 </LinearLayout>

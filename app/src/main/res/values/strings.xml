@@ -4,5 +4,6 @@
     <string name="app_name">Teste GoogleMaps V2 II</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="title_activity_gps_main">GpsMainActivity</string>
 
 </resources>

@@ -13,6 +13,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
@@ -63,6 +64,11 @@ public class MainActivity extends FragmentActivity {
         map = mapFrag.getMap();
         //ativa o mapa do xml
         configMap();
+    }
+
+    public void irGpsActivity(View view){
+        Intent intent = new Intent(MainActivity.this,GpsMainActivity.class);
+        startActivity(intent);
     }
 
 
